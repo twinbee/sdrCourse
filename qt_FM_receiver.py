@@ -6,9 +6,9 @@
 #
 # GNU Radio Python Flow Graph
 # Title: Qt Fm Receiver
-# GNU Radio version: 3.8.2.0
+# GNU Radio version: 3.10.1.1
 
-from distutils.version import StrictVersion
+from packaging.version import Version as StrictVersion
 
 if __name__ == '__main__':
     import ctypes
@@ -29,21 +29,25 @@ from gnuradio import audio
 from gnuradio import blocks
 from gnuradio import filter
 from gnuradio import gr
+from gnuradio.fft import window
 import sys
 import signal
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio.qtgui import Range, RangeWidget
+from PyQt5 import QtCore
 import osmosdr
 import time
+
+
 
 from gnuradio import qtgui
 
 class qt_FM_receiver(gr.top_block, Qt.QWidget):
 
     def __init__(self):
-        gr.top_block.__init__(self, "Qt Fm Receiver")
+        gr.top_block.__init__(self, "Qt Fm Receiver", catch_exceptions=True)
         Qt.QWidget.__init__(self)
         self.setWindowTitle("Qt Fm Receiver")
         qtgui.util.check_set_qss()
@@ -76,7 +80,7 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.samp_rate = samp_rate = 20e6
+        self.samp_rate = samp_rate = 10e6
         self.channel_width = channel_width = 200e3
         self.channel_freq = channel_freq = 97.9e6
         self.center_freq = center_freq = 97.9e6
@@ -86,26 +90,27 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
         # Blocks
         ##################################################
         self._channel_freq_range = Range(89.0e6, 107.9e6, 1e5, 97.9e6, 100)
-        self._channel_freq_win = RangeWidget(self._channel_freq_range, self.set_channel_freq, 'channel_freq', "counter_slider", float)
-        self.top_grid_layout.addWidget(self._channel_freq_win)
+        self._channel_freq_win = RangeWidget(self._channel_freq_range, self.set_channel_freq, "channel_freq", "counter_slider", float, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._channel_freq_win)
         self._center_freq_range = Range(89.0e6, 107.9e6, 1e5, 97.9e6, 100)
-        self._center_freq_win = RangeWidget(self._center_freq_range, self.set_center_freq, 'center_freq', "counter_slider", float)
-        self.top_grid_layout.addWidget(self._center_freq_win)
+        self._center_freq_win = RangeWidget(self._center_freq_range, self.set_center_freq, "center_freq", "counter_slider", float, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._center_freq_win)
         self._audio_gain_range = Range(0, 1, .01, 1, 100)
-        self._audio_gain_win = RangeWidget(self._audio_gain_range, self.set_audio_gain, 'volume', "slider", float)
-        self.top_grid_layout.addWidget(self._audio_gain_win)
+        self._audio_gain_win = RangeWidget(self._audio_gain_range, self.set_audio_gain, "volume", "slider", float, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._audio_gain_win)
         self.rational_resampler_xxx_0 = filter.rational_resampler_ccc(
                 interpolation=12,
                 decimation=5,
-                taps=None,
-                fractional_bw=None)
+                taps=[],
+                fractional_bw=0)
         self.qtgui_freq_sink_x_0_0 = qtgui.freq_sink_c(
             1024, #size
-            firdes.WIN_BLACKMAN_hARRIS, #wintype
+            window.WIN_BLACKMAN_hARRIS, #wintype
             channel_freq, #fc
             1e6, #bw
             "channel_freq", #name
-            1
+            1,
+            None # parent
         )
         self.qtgui_freq_sink_x_0_0.set_update_time(0.10)
         self.qtgui_freq_sink_x_0_0.set_y_axis(-140, 10)
@@ -116,6 +121,7 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
         self.qtgui_freq_sink_x_0_0.set_fft_average(0.1)
         self.qtgui_freq_sink_x_0_0.enable_axis_labels(True)
         self.qtgui_freq_sink_x_0_0.enable_control_panel(False)
+        self.qtgui_freq_sink_x_0_0.set_fft_window_normalized(False)
 
 
 
@@ -137,15 +143,16 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
             self.qtgui_freq_sink_x_0_0.set_line_color(i, colors[i])
             self.qtgui_freq_sink_x_0_0.set_line_alpha(i, alphas[i])
 
-        self._qtgui_freq_sink_x_0_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0_0.pyqwidget(), Qt.QWidget)
-        self.top_grid_layout.addWidget(self._qtgui_freq_sink_x_0_0_win)
+        self._qtgui_freq_sink_x_0_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0_0.qwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_freq_sink_x_0_0_win)
         self.qtgui_freq_sink_x_0 = qtgui.freq_sink_c(
             1024, #size
-            firdes.WIN_BLACKMAN_hARRIS, #wintype
+            window.WIN_BLACKMAN_hARRIS, #wintype
             center_freq, #fc
             20e6, #bw
             "", #name
-            1
+            1,
+            None # parent
         )
         self.qtgui_freq_sink_x_0.set_update_time(0.10)
         self.qtgui_freq_sink_x_0.set_y_axis(-140, 10)
@@ -156,6 +163,7 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
         self.qtgui_freq_sink_x_0.set_fft_average(0.1)
         self.qtgui_freq_sink_x_0.enable_axis_labels(True)
         self.qtgui_freq_sink_x_0.enable_control_panel(False)
+        self.qtgui_freq_sink_x_0.set_fft_window_normalized(False)
 
 
 
@@ -177,8 +185,8 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
             self.qtgui_freq_sink_x_0.set_line_color(i, colors[i])
             self.qtgui_freq_sink_x_0.set_line_alpha(i, alphas[i])
 
-        self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.pyqwidget(), Qt.QWidget)
-        self.top_grid_layout.addWidget(self._qtgui_freq_sink_x_0_win)
+        self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
         self.osmosdr_source_0 = osmosdr.source(
             args="numchan=" + str(1) + " " + ''
         )
@@ -201,7 +209,7 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
                 samp_rate,
                 75e3,
                 25e3,
-                firdes.WIN_HAMMING,
+                window.WIN_HAMMING,
                 6.76))
         self.blocks_multiply_xx_0 = blocks.multiply_vcc(1)
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff(audio_gain)
@@ -211,7 +219,6 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
         	audio_decimation=10,
         )
         self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, center_freq - channel_freq, 1, 0, 0)
-
 
 
         ##################################################
@@ -231,6 +238,9 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
     def closeEvent(self, event):
         self.settings = Qt.QSettings("GNU Radio", "qt_FM_receiver")
         self.settings.setValue("geometry", self.saveGeometry())
+        self.stop()
+        self.wait()
+
         event.accept()
 
     def get_samp_rate(self):
@@ -239,7 +249,7 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
         self.analog_sig_source_x_0.set_sampling_freq(self.samp_rate)
-        self.low_pass_filter_0.set_taps(firdes.low_pass(1, self.samp_rate, 75e3, 25e3, firdes.WIN_HAMMING, 6.76))
+        self.low_pass_filter_0.set_taps(firdes.low_pass(1, self.samp_rate, 75e3, 25e3, window.WIN_HAMMING, 6.76))
         self.osmosdr_source_0.set_sample_rate(self.samp_rate)
 
     def get_channel_width(self):
@@ -275,7 +285,6 @@ class qt_FM_receiver(gr.top_block, Qt.QWidget):
 
 
 
-
 def main(top_block_cls=qt_FM_receiver, options=None):
 
     if StrictVersion("4.5.0") <= StrictVersion(Qt.qVersion()) < StrictVersion("5.0.0"):
@@ -290,6 +299,9 @@ def main(top_block_cls=qt_FM_receiver, options=None):
     tb.show()
 
     def sig_handler(sig=None, frame=None):
+        tb.stop()
+        tb.wait()
+
         Qt.QApplication.quit()
 
     signal.signal(signal.SIGINT, sig_handler)
@@ -299,11 +311,6 @@ def main(top_block_cls=qt_FM_receiver, options=None):
     timer.start(500)
     timer.timeout.connect(lambda: None)
 
-    def quitting():
-        tb.stop()
-        tb.wait()
-
-    qapp.aboutToQuit.connect(quitting)
     qapp.exec_()
 
 if __name__ == '__main__':
