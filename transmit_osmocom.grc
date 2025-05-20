@@ -54,19 +54,19 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [16, 488.0]
+    coordinate: [16, 472.0]
     rotation: 0
     state: enabled
 - name: freq
   id: variable
   parameters:
     comment: ''
-    value: 915e6
+    value: freq_sweeper.sweeper(fun_prob, f_min, f_max, step_size)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [112, 552.0]
+    coordinate: [112, 536.0]
     rotation: 0
     state: enabled
 - name: frequency
@@ -92,7 +92,7 @@ blocks:
     comment: ''
     function_args: ''
     function_name: level
-    poll_rate: '1'
+    poll_rate: '2'
     value: '0'
   states:
     bus_sink: false
@@ -114,7 +114,7 @@ blocks:
     step: '1'
     stop: '47'
     value: '10'
-    widget: dial
+    widget: counter_slider
   states:
     bus_sink: false
     bus_source: false
@@ -126,21 +126,21 @@ blocks:
   id: variable_qtgui_range
   parameters:
     comment: ''
-    gui_hint: 3,0
+    gui_hint: 0,3
     label: SW Gain
     min_len: '200'
     orient: QtCore.Qt.Horizontal
     rangeType: float
     start: '0'
     step: '1'
-    stop: '100'
+    stop: '10'
     value: '1'
     widget: counter_slider
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [824, 40.0]
+    coordinate: [816, 40.0]
     rotation: 0
     state: enabled
 - name: rf_gain
@@ -156,7 +156,7 @@ blocks:
     step: '1'
     stop: '20'
     value: '0'
-    widget: dial
+    widget: counter_slider
   states:
     bus_sink: false
     bus_source: false
@@ -204,7 +204,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [280, 200.0]
+    coordinate: [288, 200.0]
     rotation: 0
     state: enabled
 - name: analog_sig_source_x_0
@@ -214,7 +214,7 @@ blocks:
     alias: ''
     amp: '1'
     comment: ''
-    freq: freq_sweeper.sweeper(fun_prob, f_min, f_max, step_size)
+    freq: 10e3
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
@@ -222,7 +222,7 @@ blocks:
     samp_rate: samp_rate
     showports: 'False'
     type: complex
-    waveform: analog.GR_COS_WAVE
+    waveform: analog.GR_SIN_WAVE
   states:
     bus_sink: false
     bus_source: false
@@ -447,7 +447,7 @@ blocks:
     corr7: '0'
     corr8: '0'
     corr9: '0'
-    freq0: freq
+    freq0: freq_sweeper.sweeper(fun_prob, f_min, f_max, step_size)
     freq1: 100e6
     freq10: 100e6
     freq11: 100e6
@@ -562,7 +562,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [992, 128.0]
+    coordinate: [944, 160.0]
     rotation: 0
     state: enabled
 - name: probSign
@@ -576,7 +576,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [984, 448.0]
+    coordinate: [944, 472.0]
     rotation: 0
     state: true
 - name: qtgui_sink_x_0
@@ -605,9 +605,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [984, 304.0]
+    coordinate: [944, 328.0]
     rotation: 0
-    state: true
+    state: enabled
 
 connections:
 - [analog_noise_source_x_0, '0', blocks_add_xx_0, '0']

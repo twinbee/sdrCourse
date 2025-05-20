@@ -66,16 +66,16 @@ class transmit_osmocom(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.freq = freq = 915e6
         self.step_size = step_size = 1e6
+        self.fun_prob = fun_prob = 0
+        self.f_min = f_min = 900e6
+        self.f_max = f_max = 927.5e6
+        self.freq = freq = freq_sweeper.sweeper(fun_prob, f_min, f_max, step_size)
         self.samp_rate = samp_rate = 10e6
         self.rf_gain = rf_gain = 0
         self.mult = mult = 1
         self.if_gain = if_gain = 10
-        self.fun_prob = fun_prob = 0
         self.frequency = frequency = freq
-        self.f_min = f_min = 900e6
-        self.f_max = f_max = 927.5e6
 
         ##################################################
         # Blocks
@@ -83,21 +83,21 @@ class transmit_osmocom(gr.top_block, Qt.QWidget):
 
         self.probSign = blocks.probe_signal_c()
         self._rf_gain_range = qtgui.Range(0, 20, 1, 0, 200)
-        self._rf_gain_win = qtgui.RangeWidget(self._rf_gain_range, self.set_rf_gain, "RF Gain", "dial", float, QtCore.Qt.Horizontal)
+        self._rf_gain_win = qtgui.RangeWidget(self._rf_gain_range, self.set_rf_gain, "RF Gain", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_grid_layout.addWidget(self._rf_gain_win, 0, 0, 1, 1)
         for r in range(0, 1):
             self.top_grid_layout.setRowStretch(r, 1)
         for c in range(0, 1):
             self.top_grid_layout.setColumnStretch(c, 1)
-        self._mult_range = qtgui.Range(0, 100, 1, 1, 200)
+        self._mult_range = qtgui.Range(0, 10, 1, 1, 200)
         self._mult_win = qtgui.RangeWidget(self._mult_range, self.set_mult, "SW Gain", "counter_slider", float, QtCore.Qt.Horizontal)
-        self.top_grid_layout.addWidget(self._mult_win, 3, 0, 1, 1)
-        for r in range(3, 4):
+        self.top_grid_layout.addWidget(self._mult_win, 0, 3, 1, 1)
+        for r in range(0, 1):
             self.top_grid_layout.setRowStretch(r, 1)
-        for c in range(0, 1):
+        for c in range(3, 4):
             self.top_grid_layout.setColumnStretch(c, 1)
         self._if_gain_range = qtgui.Range(0, 47, 1, 10, 200)
-        self._if_gain_win = qtgui.RangeWidget(self._if_gain_range, self.set_if_gain, "IF", "dial", float, QtCore.Qt.Horizontal)
+        self._if_gain_win = qtgui.RangeWidget(self._if_gain_range, self.set_if_gain, "IF", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_grid_layout.addWidget(self._if_gain_win, 0, 1, 1, 1)
         for r in range(0, 1):
             self.top_grid_layout.setRowStretch(r, 1)
@@ -115,7 +115,7 @@ class transmit_osmocom(gr.top_block, Qt.QWidget):
                 self.set_fun_prob(val)
             except AttributeError:
               pass
-            time.sleep(1.0 / (10))
+            time.sleep(1.0 / (2))
         _fun_prob_thread = threading.Thread(target=_fun_prob_probe)
         _fun_prob_thread.daemon = True
         _fun_prob_thread.start()
@@ -142,7 +142,7 @@ class transmit_osmocom(gr.top_block, Qt.QWidget):
         )
         self.osmosdr_sink_0.set_time_unknown_pps(osmosdr.time_spec_t())
         self.osmosdr_sink_0.set_sample_rate(samp_rate)
-        self.osmosdr_sink_0.set_center_freq(freq, 0)
+        self.osmosdr_sink_0.set_center_freq(freq_sweeper.sweeper(fun_prob, f_min, f_max, step_size), 0)
         self.osmosdr_sink_0.set_freq_corr(0, 0)
         self.osmosdr_sink_0.set_gain(rf_gain, 0)
         self.osmosdr_sink_0.set_if_gain(if_gain, 0)
@@ -166,13 +166,17 @@ class transmit_osmocom(gr.top_block, Qt.QWidget):
             self.top_grid_layout.setColumnStretch(c, 1)
         self.blocks_throttle2_0 = blocks.throttle( gr.sizeof_gr_complex*1, samp_rate, True, 0 if "auto" == "auto" else max( int(float(0.1) * samp_rate) if "auto" == "time" else int(0.1), 1) )
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_cc(mult)
-        self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, freq_sweeper.sweeper(fun_prob, f_min, f_max, step_size), 1, 0, 0)
+        self.blocks_add_xx_0 = blocks.add_vcc(1)
+        self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_SIN_WAVE, 10e3, 1, 0, 0)
+        self.analog_noise_source_x_0 = analog.noise_source_c(analog.GR_GAUSSIAN, 0.0001, 0)
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_multiply_const_vxx_0, 0))
+        self.connect((self.analog_noise_source_x_0, 0), (self.blocks_add_xx_0, 0))
+        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_add_xx_0, 1))
+        self.connect((self.blocks_add_xx_0, 0), (self.blocks_multiply_const_vxx_0, 0))
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_throttle2_0, 0))
         self.connect((self.blocks_throttle2_0, 0), (self.osmosdr_sink_0, 0))
         self.connect((self.blocks_throttle2_0, 0), (self.probSign, 0))
@@ -187,20 +191,46 @@ class transmit_osmocom(gr.top_block, Qt.QWidget):
 
         event.accept()
 
+    def get_step_size(self):
+        return self.step_size
+
+    def set_step_size(self, step_size):
+        self.step_size = step_size
+        self.set_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
+        self.osmosdr_sink_0.set_center_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size), 0)
+
+    def get_fun_prob(self):
+        return self.fun_prob
+
+    def set_fun_prob(self, fun_prob):
+        self.fun_prob = fun_prob
+        self.set_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
+        self.osmosdr_sink_0.set_center_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size), 0)
+
+    def get_f_min(self):
+        return self.f_min
+
+    def set_f_min(self, f_min):
+        self.f_min = f_min
+        self.set_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
+        self.osmosdr_sink_0.set_center_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size), 0)
+        self.qtgui_sink_x_0.set_frequency_range((((self.f_max-self.f_min)/2+self.f_min)), self.samp_rate)
+
+    def get_f_max(self):
+        return self.f_max
+
+    def set_f_max(self, f_max):
+        self.f_max = f_max
+        self.set_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
+        self.osmosdr_sink_0.set_center_freq(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size), 0)
+        self.qtgui_sink_x_0.set_frequency_range((((self.f_max-self.f_min)/2+self.f_min)), self.samp_rate)
+
     def get_freq(self):
         return self.freq
 
     def set_freq(self, freq):
         self.freq = freq
         self.set_frequency(self.freq)
-        self.osmosdr_sink_0.set_center_freq(self.freq, 0)
-
-    def get_step_size(self):
-        return self.step_size
-
-    def set_step_size(self, step_size):
-        self.step_size = step_size
-        self.analog_sig_source_x_0.set_frequency(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
 
     def get_samp_rate(self):
         return self.samp_rate
@@ -233,35 +263,12 @@ class transmit_osmocom(gr.top_block, Qt.QWidget):
         self.if_gain = if_gain
         self.osmosdr_sink_0.set_if_gain(self.if_gain, 0)
 
-    def get_fun_prob(self):
-        return self.fun_prob
-
-    def set_fun_prob(self, fun_prob):
-        self.fun_prob = fun_prob
-        self.analog_sig_source_x_0.set_frequency(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
-
     def get_frequency(self):
         return self.frequency
 
     def set_frequency(self, frequency):
         self.frequency = frequency
         Qt.QMetaObject.invokeMethod(self._frequency_label, "setText", Qt.Q_ARG("QString", str(self._frequency_formatter(self.frequency))))
-
-    def get_f_min(self):
-        return self.f_min
-
-    def set_f_min(self, f_min):
-        self.f_min = f_min
-        self.analog_sig_source_x_0.set_frequency(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
-        self.qtgui_sink_x_0.set_frequency_range((((self.f_max-self.f_min)/2+self.f_min)), self.samp_rate)
-
-    def get_f_max(self):
-        return self.f_max
-
-    def set_f_max(self, f_max):
-        self.f_max = f_max
-        self.analog_sig_source_x_0.set_frequency(freq_sweeper.sweeper(self.fun_prob, self.f_min, self.f_max, self.step_size))
-        self.qtgui_sink_x_0.set_frequency_range((((self.f_max-self.f_min)/2+self.f_min)), self.samp_rate)
 
 
 
