@@ -1,19 +1,14 @@
-# this module will be imported in the into your flowgraph
+f = None
 
-f1 = 400e6
-f2 = 470e6
-
-f = f1
-
-step = 1e6
-
-def sweeper(prob_lvl):
-	global f1,f2,f,step;
-	if (prob_lvl):
-		f += step;
-	if (f >= f2):
-		f = f1;
-	
-	return f;
-	
-
+def sweeper(prob_lvl, f_min, f_max, step_size):
+    global f
+    if f is None:
+        print("Initializing frequency to f_min:", f_min)
+        f = f_min
+    if prob_lvl:
+        f += step_size
+        print("Stepped frequency to:", f)
+    if f >= f_max:
+        print("Frequency wrapped to f_min:", f_min)
+        f = f_min
+    return f
